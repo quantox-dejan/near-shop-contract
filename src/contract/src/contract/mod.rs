@@ -122,7 +122,7 @@ impl NearShopContract for NearShop {
             .get(&env::predecessor_account_id())
             .expect("You need to register your shop before adding products to sell");
         let products = &mut user_shop.products;
-        products.push(Product::new(name, price));
+        products.push(&Product::new(name, price));
         self.user_shops
             .insert(&env::predecessor_account_id(), &user_shop);
     }
@@ -133,7 +133,7 @@ impl NearShopContract for NearShop {
             .get(&env::predecessor_account_id())
             .expect("You need to register your shop before adding coupons");
         let coupons = &mut user_shop.coupons;
-        coupons.push(Coupon::new(code, discount_percentage));
+        coupons.push(&Coupon::new(code, discount_percentage));
         self.user_shops
             .insert(&env::predecessor_account_id(), &user_shop);
     }
@@ -151,7 +151,7 @@ impl NearShopContract for NearShop {
             .get(&env::predecessor_account_id())
             .expect("You need to register your shop before adding coupons");
         let coupons = &mut user_shop.coupons;
-        coupons.push(Coupon::specific_new(
+        coupons.push(&Coupon::specific_new(
             code,
             discount_percentage,
             applies_to_products,

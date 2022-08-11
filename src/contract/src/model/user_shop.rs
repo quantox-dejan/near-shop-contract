@@ -10,8 +10,8 @@ pub struct UserShop {
     pub id: String,
     pub name: String,
     owner_account_id: AccountId,
-    pub products: Vec<Product>,
-    pub coupons: Vec<Coupon>,
+    pub products: Vector<Product>,
+    pub coupons: Vector<Coupon>,
 }
 
 impl UserShop {
@@ -21,8 +21,12 @@ impl UserShop {
             id: String::from(&id),
             name,
             owner_account_id: env::predecessor_account_id(),
-            products: Vec::new(),
-            coupons: Vec::new(),
+            products: Vector::new(StorageKeys::Products {
+                user_shop: env::sha256(id.as_bytes()),
+            }),
+            coupons: Vector::new(StorageKeys::Coupons {
+                user_shop: env::sha256(id.as_bytes()),
+            }),
         }
     }
 }
