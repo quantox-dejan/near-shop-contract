@@ -1,7 +1,7 @@
 use nanoid::nanoid;
 use near_sdk::borsh::{self, BorshSerialize, BorshDeserialize};
 
-#[derive(Default, BorshDeserialize, BorshSerialize, Clone, PartialEq)]
+#[derive(Default, BorshDeserialize, BorshSerialize, Clone, PartialEq, Debug)]
 pub struct Product {
     pub id: String,
     pub name: String,

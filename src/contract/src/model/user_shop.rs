@@ -5,7 +5,7 @@ use super::storage_keys::StorageKeys;
 use super::product::Product;
 use super::coupon::Coupon;
 
-#[derive(BorshDeserialize, BorshSerialize)]
+#[derive(BorshDeserialize, BorshSerialize, Debug)]
 pub struct UserShop {
     pub id: String,
     pub name: String,

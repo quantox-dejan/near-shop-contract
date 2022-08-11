@@ -21,3 +21,20 @@ where T : Clone {
         out
     }
 }
+
+mod tests {
+    use crate::model::product::Product;
+    use super::VectorUtils;
+
+    #[test]
+    fn intersect_with_ids_returns_correctly() {
+        let product1 = Product::new("Product1".to_string(), 0.00);
+        let product2 = Product::new("Product2".to_string(), 0.00);
+        let product3 = Product::new("Product2".to_string(), 0.00);
+        let products = vec![product1.clone(), product2.clone(), product3.clone()];
+
+        let ids = vec![String::from(&product2.id), String::from(&product1.id)];
+        let intersection = products.intersect_with_ids(|x| String::from(&x.id), &ids, |left, right| left == right);
+        assert_eq!(2, intersection.len());
+    }
+}

@@ -2,7 +2,7 @@ use nanoid::nanoid;
 use near_sdk::{AccountId, PanicOnDefault};
 use near_sdk::borsh::{self, BorshSerialize, BorshDeserialize};
 
-#[derive(BorshDeserialize, BorshSerialize, PanicOnDefault)]
+#[derive(BorshDeserialize, BorshSerialize, PanicOnDefault, Debug)]
 pub struct Coupon {
     pub id: String,
     pub code: String,

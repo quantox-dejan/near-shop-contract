@@ -154,7 +154,8 @@ impl NearShopContract for NearShop {
 
 impl NearShop {
     fn convert_products(&self, user_shop: &UserShop, products: &Vec<String>) -> Vec<ProductDto> {
-        let products = user_shop.products.to_vec().intersect_with_ids(|x: &Product| String::from(&x.id), products, |left, right| left == right);
+        let products_vector = user_shop.products.to_vec();
+        let products = products_vector.intersect_with_ids(|x: &Product| String::from(&x.id), products, |left, right| left == right);
         let mut return_value = Vec::new();
         for product in products {
             return_value.push(ProductDto::new(String::from(&product.id), String::from(&product.name), product.price));
@@ -164,3 +165,81 @@ impl NearShop {
     }
 }
 
+#[cfg(all(test, not(target_arch = "wasm32")))]
+mod tests {
+    use super::*;
+    use near_sdk::test_utils::VMContextBuilder;
+    use near_sdk::{testing_env, VMContext};
+
+    fn get_context(is_view: bool) -> VMContext {
+        VMContextBuilder::new()
+            .signer_account_id("quantox_test".parse().unwrap())
+            .is_view(is_view)
+            .build()
+    }
+
+    #[test]
+    fn get_my_user_shop_returns_after_adding_a_shop() {
+        let context = get_context(false);
+        testing_env!(context);
+
+        let mut contract = NearShop::new();
+        contract.add_user_shop("Test Shop".to_string());
+        let user_shop = contract.get_my_user_shop();
+        assert!(!user_shop.is_none());
+        assert_eq!("Test Shop".to_string(), user_shop.unwrap().name);
+    }
+
+    #[test]
+    #[should_panic(expected = "You already have a shop")]
+    fn add_user_shop_adds_only_one_per_user() {
+        let context = get_context(false);
+        testing_env!(context);
+
+        let mut contract = NearShop::new();
+        let user_shop = contract.get_my_user_shop();
+        assert!(user_shop.is_none());
+        contract.add_user_shop("Test Shop".to_string());
+        contract.add_user_shop("Should never add this one".to_string());
+    }
+
+    #[test]
+    #[should_panic(expected = "You need to register your shop before adding products to sell")]
+    fn should_not_add_a_product_if_no_shop() {
+        let context = get_context(false);
+        testing_env!(context);
+
+        let mut contract = NearShop::new();
+        contract.add_product("Should not add this product".to_string(), 0.00);
+    }
+
+    #[test]
+    fn user_shop_can_be_found_by_id() {
+        let context = get_context(false);
+        testing_env!(context);
+
+        let mut contract = NearShop::new();
+        contract.add_user_shop("Test Shop".to_string());
+        let user_shop = contract.get_my_user_shop().unwrap();
+        let user_shops = contract.user_shops.values_as_vector().to_vec();
+        let _found_user_shop = user_shops.iter().find(|&x| x.id == user_shop.id).expect("User shop should be returned");
+    }
+
+    #[test]
+    fn should_add_a_product_to_registered_shop() {
+        let context = get_context(false);
+        testing_env!(context);
+
+        let mut contract = NearShop::new();
+        contract.add_user_shop("Test Shop".to_string());
+        contract.add_product("Test Product".to_string(), 13.37);
+        let user_shop = contract.user_shops.get(&env::predecessor_account_id()).unwrap();
+        println!("{:?}", user_shop);
+        assert_eq!("Test Shop", user_shop.name);
+        let products = user_shop.products.to_vec();
+        assert_eq!(1, products.len());
+        let test_product = products.get(0).unwrap();
+        assert_eq!("Test Product".to_string(), test_product.name);
+        assert_eq!(13.37, test_product.price);
+    }
+}
