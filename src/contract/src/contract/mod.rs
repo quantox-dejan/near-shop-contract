@@ -249,6 +249,32 @@ mod tests {
     }
 
     #[test]
+    #[should_panic(expected = "You need to register your shop before adding coupons")]
+    fn should_not_add_a_default_coupon_if_no_shop() {
+        let context = get_context(false);
+        testing_env!(context);
+
+        let mut contract = NearShop::new();
+        contract.add_default_coupon("Should not add this coupon".to_string(), 100.00);
+    }
+
+    #[test]
+    #[should_panic(expected = "You need to register your shop before adding coupons")]
+    fn should_not_add_a_specific_coupon_if_no_shop() {
+        let context = get_context(false);
+        testing_env!(context);
+
+        let mut contract = NearShop::new();
+        contract.add_specific_coupon(
+            "Should not add this coupon".to_string(),
+            100.00,
+            &vec![],
+            None,
+            true,
+        );
+    }
+
+    #[test]
     fn should_add_a_product_to_registered_shop() {
         let context = get_context(false);
         testing_env!(context);
@@ -256,16 +282,71 @@ mod tests {
         let mut contract = NearShop::new();
         contract.add_user_shop("Test Shop".to_string());
         contract.add_product("Test Product".to_string(), 13.37);
-        let user_shop = contract
-            .user_shops
-            .get(&env::predecessor_account_id())
-            .unwrap();
-        println!("{:?}", user_shop);
-        assert_eq!("Test Shop", user_shop.name);
-        let products = user_shop.products.to_vec();
+        let user_shop = contract.get_my_user_shop().unwrap();
+        let products = contract.list_user_shop_products(user_shop.id);
         assert_eq!(1, products.len());
         let test_product = products.get(0).unwrap();
         assert_eq!("Test Product".to_string(), test_product.name);
         assert_eq!(13.37, test_product.price);
+    }
+
+    #[test]
+    fn should_add_a_default_coupon_to_registered_shop() {
+        let context = get_context(false);
+        testing_env!(context);
+
+        let mut contract = NearShop::new();
+        contract.add_user_shop("Test Shop".to_string());
+        contract.add_default_coupon("Test Coupon".to_string(), 13.37);
+        let coupons = contract.list_my_user_shop_coupons();
+        assert_eq!(1, coupons.len());
+        let test_coupon = coupons.get(0).unwrap();
+        assert_eq!("Test Coupon".to_string(), test_coupon.code);
+        assert_eq!(13.37, test_coupon.discount_percentage);
+    }
+
+    #[test]
+    fn should_add_a_one_time_specific_coupon_to_registered_shop() {
+        let context = get_context(false);
+        testing_env!(context);
+
+        let mut contract = NearShop::new();
+        contract.add_user_shop("Test Shop".to_string());
+        contract.add_specific_coupon("Test Coupon".to_string(), 13.37, &vec![], None, true);
+        let coupons = contract.list_my_user_shop_coupons();
+
+        assert_eq!(1, coupons.len());
+        let test_coupon = coupons.get(0).unwrap();
+        assert_eq!("Test Coupon".to_string(), test_coupon.code);
+        assert_eq!(13.37, test_coupon.discount_percentage);
+        assert_eq!(true, test_coupon.applies_to_all_products);
+        assert_eq!(true, test_coupon.applies_to_all_users);
+        assert_eq!(true, test_coupon.is_one_time);
+    }
+
+    #[test]
+    fn should_add_a_reusable_coupon_which_applies_to_one_user() {
+        let context = get_context(false);
+        testing_env!(context);
+
+        let mut contract = NearShop::new();
+        contract.add_user_shop("Test Shop".to_string());
+        contract.add_specific_coupon(
+            "Test Coupon".to_string(),
+            13.37,
+            &vec![],
+            Some(env::signer_account_id()),
+            false,
+        );
+
+        let coupons = contract.list_my_user_shop_coupons();
+        assert_eq!(1, coupons.len());
+        let test_coupon = coupons.get(0).unwrap();
+        assert_eq!("Test Coupon".to_string(), test_coupon.code);
+        assert_eq!(13.37, test_coupon.discount_percentage);
+        assert_eq!(true, test_coupon.applies_to_all_products);
+        assert_eq!(false, test_coupon.applies_to_all_users);
+        assert_eq!(Some(env::signer_account_id()), test_coupon.applies_to_user);
+        assert_eq!(false, test_coupon.is_one_time);
     }
 }
