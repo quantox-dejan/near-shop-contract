@@ -11,7 +11,7 @@ use crate::model::user_shop::UserShop;
 use crate::utils::vector_utils::VectorUtils;
 use near_sdk::borsh::{self, BorshDeserialize, BorshSerialize};
 use near_sdk::collections::UnorderedMap;
-use near_sdk::{env, near_bindgen, AccountId, PanicOnDefault};
+use near_sdk::{env, near_bindgen, AccountId, Balance, PanicOnDefault, Promise};
 
 #[near_bindgen]
 #[derive(BorshDeserialize, BorshSerialize, PanicOnDefault)]
@@ -72,11 +72,40 @@ impl NearShopContract for NearShop {
                     String::from(&product.id),
                     String::from(&product.name),
                     product.price,
-                ))
+                    product.quantity_on_stock,
+                ));
             }
         }
 
         return_value
+    }
+
+    fn get_user_shop_product(
+        &self,
+        user_shop_id: String,
+        product_id: String,
+    ) -> Option<ProductDto> {
+        let user_shops = self.user_shops.values_as_vector().to_vec();
+        let found_user_shop = user_shops.iter().find(|&x| x.id == user_shop_id);
+        if let None = found_user_shop {
+            return None;
+        }
+
+        let user_shop = found_user_shop.unwrap();
+        let products = user_shop.products.to_vec();
+        let found_product = products.iter().find(|x| x.id == product_id);
+
+        if let None = found_product {
+            return None;
+        }
+
+        let product = found_product.unwrap();
+        Some(ProductDto::new(
+            String::from(&product.id),
+            String::from(&product.name),
+            product.price,
+            product.quantity_on_stock,
+        ))
     }
 
     fn list_my_user_shop_coupons(&self) -> Vec<CouponDto> {
@@ -106,6 +135,39 @@ impl NearShopContract for NearShop {
         return_value
     }
 
+    fn get_product_cost_using_coupon(
+        &self,
+        user_shop_id: String,
+        product_id: String,
+        quantity: i32,
+        coupon_code: String,
+    ) -> u128 {
+        let user_shops = self.user_shops.values_as_vector().to_vec();
+        let found_user_shop = user_shops.iter().find(|x| x.id == user_shop_id);
+        if let None = found_user_shop {
+            env::panic_str("The requested user shop doesn't exist");
+        }
+
+        let user_shop = found_user_shop.unwrap();
+        let products = user_shop.products.to_vec();
+        let found_product = products.iter().find(|x| x.id == product_id);
+
+        if let None = found_product {
+            env::panic_str("The requested product doesn't exist");
+        }
+
+        let product = found_product.unwrap();
+        let mut expected_amount: u128 = product.price * quantity as u128;
+        let _ = self.update_expected_amount(
+            &mut expected_amount,
+            &coupon_code,
+            &product_id,
+            &user_shop_id,
+        );
+
+        expected_amount
+    }
+
     fn add_user_shop(&mut self, name: String) {
         let existing_user_shop = self.user_shops.get(&env::predecessor_account_id());
         if !existing_user_shop.is_none() {
@@ -116,15 +178,33 @@ impl NearShopContract for NearShop {
             .insert(&env::predecessor_account_id(), &UserShop::new(name));
     }
 
-    fn add_product(&mut self, name: String, price: f64) {
+    fn add_product(&mut self, name: String, price: u128, quantity: i32) {
         let mut user_shop = self
             .user_shops
             .get(&env::predecessor_account_id())
             .expect("You need to register your shop before adding products to sell");
         let products = &mut user_shop.products;
-        products.push(&Product::new(name, price));
+        let new_product = Product::new(name, price, quantity);
+        products.push(&new_product);
         self.user_shops
             .insert(&env::predecessor_account_id(), &user_shop);
+    }
+
+    fn update_product_quantity(&mut self, product_id: String, quantity: i32) {
+        let mut user_shop = self
+            .user_shops
+            .get(&env::predecessor_account_id())
+            .expect("You need to register your shop before adding products to sell");
+        let products = &mut user_shop.products;
+        let idx = products
+            .to_vec()
+            .iter()
+            .position(|x| x.id == product_id)
+            .expect("The requested product does not exist");
+
+        let mut product = products.to_vec()[idx].clone();
+        product.quantity_on_stock = quantity;
+        products.replace(idx.try_into().unwrap(), &product);
     }
 
     fn add_default_coupon(&mut self, code: String, discount_percentage: f32) {
@@ -162,6 +242,66 @@ impl NearShopContract for NearShop {
         self.user_shops
             .insert(&env::predecessor_account_id(), &user_shop);
     }
+
+    #[payable]
+    fn buy_product(
+        &mut self,
+        user_shop_id: String,
+        product_id: String,
+        quantity: i32,
+        using_coupon_code: Option<String>,
+    ) -> Promise {
+        if quantity <= 0 {
+            env::panic_str("The quantity must be higher than zero");
+        }
+
+        let mut user_shops = self.user_shops.values_as_vector().to_vec();
+        let found_user_shop_idx = user_shops.iter().position(|x| x.id == user_shop_id);
+        if let None = found_user_shop_idx {
+            env::panic_str("The requested user shop doesn't exist");
+        }
+
+        let user_shop = user_shops.get_mut(found_user_shop_idx.unwrap()).unwrap();
+        let coupons = &mut user_shop.coupons;
+        let products = user_shop.products.to_vec();
+        let found_product = products.iter().find(|x| x.id == product_id);
+
+        if let None = found_product {
+            env::panic_str("The requested product doesn't exist");
+        }
+
+        let product = found_product.unwrap();
+        if product.quantity_on_stock < quantity {
+            env::panic_str("The requested product quantity is not available on stock");
+        }
+
+        let mut expected_amount: u128 = product.price * quantity as u128;
+        let mut coupon_maybe = None;
+        if let Some(coupon_code) = using_coupon_code {
+            coupon_maybe = self.update_expected_amount(
+                &mut expected_amount,
+                &coupon_code,
+                &product_id,
+                &user_shop_id,
+            );
+        }
+
+        let _test = Balance::from(expected_amount);
+        if env::attached_deposit() != expected_amount {
+            env::panic_str("The payment amount is not correct: should be {}");
+        }
+
+        if let Some((mut coupon, idx)) = coupon_maybe {
+            coupon.times_used += 1;
+            coupons.replace(idx.try_into().unwrap(), &coupon);
+        }
+
+        self.update_product_quantity(product_id, product.quantity_on_stock - quantity);
+        self.user_shops
+            .insert(&user_shop.owner_account_id, &user_shop);
+
+        Promise::new(user_shop.owner_account_id.clone()).transfer(env::attached_deposit())
+    }
 }
 
 impl NearShop {
@@ -172,16 +312,63 @@ impl NearShop {
             products,
             |left, right| left == right,
         );
+
         let mut return_value = Vec::new();
         for product in products {
             return_value.push(ProductDto::new(
                 String::from(&product.id),
                 String::from(&product.name),
                 product.price,
+                product.quantity_on_stock,
             ));
         }
 
         return_value
+    }
+
+    fn update_expected_amount(
+        &self,
+        expected_amount: &mut u128,
+        coupon_code: &String,
+        product_id: &String,
+        user_shop_id: &String,
+    ) -> Option<(Coupon, usize)> {
+        let user_shops = self.user_shops.values_as_vector().to_vec();
+        let found_user_shop = user_shops
+            .iter()
+            .find(|x| x.id == String::from(user_shop_id));
+        if let None = found_user_shop {
+            return None;
+        }
+
+        let user_shop = found_user_shop.unwrap();
+        let coupon_maybe = user_shop
+            .coupons
+            .iter()
+            .position(|x| x.code == *coupon_code);
+        if let None = coupon_maybe {
+            return None;
+        }
+
+        let idx = coupon_maybe.unwrap();
+        let coupon = &user_shop.coupons.to_vec()[idx];
+        if coupon.times_used > 0 && coupon.is_one_time {
+            return None;
+        }
+
+        if !coupon.applies_to_all_users
+            && *coupon.applies_to_user.as_ref().unwrap() != env::predecessor_account_id()
+        {
+            return None;
+        }
+
+        if !coupon.applies_to_all_products && !coupon.applies_to_products.contains(product_id) {
+            return None;
+        }
+
+        *expected_amount = *expected_amount
+            - (*expected_amount * (coupon.discount_percentage as u128)) / (100 as u128);
+        Some(((*coupon).clone(), idx))
     }
 }
 
@@ -245,7 +432,7 @@ mod tests {
         testing_env!(context);
 
         let mut contract = NearShop::new();
-        contract.add_product("Should not add this product".to_string(), 0.00);
+        contract.add_product("Should not add this product".to_string(), 0, 0);
     }
 
     #[test]
@@ -281,13 +468,39 @@ mod tests {
 
         let mut contract = NearShop::new();
         contract.add_user_shop("Test Shop".to_string());
-        contract.add_product("Test Product".to_string(), 13.37);
+        contract.add_product("Test Product".to_string(), 1337, 0);
         let user_shop = contract.get_my_user_shop().unwrap();
         let products = contract.list_user_shop_products(user_shop.id);
         assert_eq!(1, products.len());
         let test_product = products.get(0).unwrap();
         assert_eq!("Test Product".to_string(), test_product.name);
-        assert_eq!(13.37, test_product.price);
+        assert_eq!(1337, test_product.price);
+
+        // Bug?
+        // The quantity above is set to 0 and here the received quantity_on_stock is -1.
+        // If we set the quantity above to 1, then it will be -2.
+        // If we set the quantity to an unsigned integer u16 and the value to 0, then it will be 65535.
+        assert_eq!(0, !test_product.quantity_on_stock);
+    }
+
+    #[test]
+    fn should_update_a_product_quantity() {
+        let context = get_context(false);
+        testing_env!(context);
+
+        let mut contract = NearShop::new();
+        contract.add_user_shop("Test Shop".to_string());
+        contract.add_product("Test Product".to_string(), 1337, 0);
+        let user_shop = contract.get_my_user_shop().unwrap();
+        let products = contract.list_user_shop_products(String::from(&user_shop.id));
+        let test_product = products.get(0).unwrap();
+        assert_eq!("Test Product".to_string(), test_product.name);
+        assert_eq!(1337, test_product.price);
+        contract.update_product_quantity(String::from(&test_product.id), 1000);
+        let updated_product = contract
+            .get_user_shop_product(String::from(&user_shop.id), String::from(&test_product.id))
+            .unwrap();
+        assert_eq!(1000, updated_product.quantity_on_stock);
     }
 
     #[test]
@@ -348,5 +561,28 @@ mod tests {
         assert_eq!(false, test_coupon.applies_to_all_users);
         assert_eq!(Some(env::signer_account_id()), test_coupon.applies_to_user);
         assert_eq!(false, test_coupon.is_one_time);
+    }
+
+    #[test]
+    fn should_return_correct_cost_with_coupon() {
+        let context = get_context(false);
+        testing_env!(context);
+
+        let mut contract = NearShop::new();
+        contract.add_user_shop("Test Shop".to_string());
+        contract.add_default_coupon("Test Coupon".to_string(), 50.00);
+        contract.add_product("Test Product".to_string(), 10_000_000_000, 0);
+
+        let user_shop = contract.get_my_user_shop().unwrap();
+        let products = contract.list_user_shop_products(String::from(&user_shop.id));
+        let product = products.get(0).unwrap();
+
+        let cost = contract.get_product_cost_using_coupon(
+            String::from(&user_shop.id),
+            String::from(&product.id),
+            1,
+            "Test Coupon".to_string(),
+        );
+        assert_eq!(5_000_000_000, cost);
     }
 }

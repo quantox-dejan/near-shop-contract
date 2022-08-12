@@ -1,8 +1,8 @@
 use nanoid::nanoid;
+use near_sdk::borsh::{self, BorshDeserialize, BorshSerialize};
 use near_sdk::{AccountId, PanicOnDefault};
-use near_sdk::borsh::{self, BorshSerialize, BorshDeserialize};
 
-#[derive(BorshDeserialize, BorshSerialize, PanicOnDefault, Debug)]
+#[derive(BorshDeserialize, BorshSerialize, PanicOnDefault, Debug, Clone)]
 pub struct Coupon {
     pub id: String,
     pub code: String,
@@ -12,7 +12,7 @@ pub struct Coupon {
     pub applies_to_all_users: bool,
     pub applies_to_user: Option<AccountId>,
     pub is_one_time: bool,
-    pub times_used: u32
+    pub times_used: u32,
 }
 
 impl Coupon {
@@ -26,11 +26,17 @@ impl Coupon {
             applies_to_all_users: true,
             applies_to_user: None,
             is_one_time: false,
-            times_used: 0
+            times_used: 0,
         }
     }
 
-    pub fn specific_new(code: String, discount_percentage: f32, applies_to_products: &Vec<String>, applies_to_user: Option<AccountId>, is_one_time: bool) -> Self {
+    pub fn specific_new(
+        code: String,
+        discount_percentage: f32,
+        applies_to_products: &Vec<String>,
+        applies_to_user: Option<AccountId>,
+        is_one_time: bool,
+    ) -> Self {
         Self {
             id: nanoid!(),
             code,
@@ -40,7 +46,7 @@ impl Coupon {
             applies_to_all_users: applies_to_user.is_none(),
             applies_to_user,
             is_one_time,
-            times_used: 0
+            times_used: 0,
         }
     }
 }

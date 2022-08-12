@@ -9,7 +9,7 @@ use near_sdk::{env, AccountId};
 pub struct UserShop {
     pub id: String,
     pub name: String,
-    owner_account_id: AccountId,
+    pub owner_account_id: AccountId,
     pub products: Vector<Product>,
     pub coupons: Vector<Coupon>,
 }

@@ -1,19 +1,21 @@
 use nanoid::nanoid;
-use near_sdk::borsh::{self, BorshSerialize, BorshDeserialize};
+use near_sdk::borsh::{self, BorshDeserialize, BorshSerialize};
 
 #[derive(Default, BorshDeserialize, BorshSerialize, Clone, PartialEq, Debug)]
 pub struct Product {
     pub id: String,
     pub name: String,
-    pub price: f64
+    pub price: u128,
+    pub quantity_on_stock: i32,
 }
 
 impl Product {
-    pub fn new(name: String, price: f64) -> Self {
+    pub fn new(name: String, price: u128, quantity_on_stock: i32) -> Self {
         Self {
             id: nanoid!(),
             name,
-            price
+            price,
+            quantity_on_stock,
         }
     }
 }
