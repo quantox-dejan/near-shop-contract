@@ -1,5 +1,6 @@
-use nanoid::nanoid;
 use near_sdk::borsh::{self, BorshDeserialize, BorshSerialize};
+
+use crate::utils::random_utils;
 
 #[derive(Default, BorshDeserialize, BorshSerialize, Clone, PartialEq, Debug)]
 pub struct Product {
@@ -12,7 +13,7 @@ pub struct Product {
 impl Product {
     pub fn new(name: String, price: u128, quantity_on_stock: i32) -> Self {
         Self {
-            id: nanoid!(),
+            id: random_utils::get_random(),
             name,
             price,
             quantity_on_stock,

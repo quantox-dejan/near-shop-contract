@@ -1,6 +1,6 @@
 use near_sdk::serde::{Deserialize, Serialize};
 
-#[derive(Deserialize, Serialize)]
+#[derive(Deserialize, Serialize, Default)]
 pub struct UserShopDto {
     pub id: String,
     pub name: String,
@@ -8,9 +8,6 @@ pub struct UserShopDto {
 
 impl UserShopDto {
     pub fn new(id: String, name: String) -> Self {
-        Self {
-            id,
-            name
-        }
+        Self { id, name }
     }
 }

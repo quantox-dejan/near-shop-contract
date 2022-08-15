@@ -37,19 +37,20 @@ where
 }
 
 mod tests {
-    use super::VectorUtils;
-    use crate::model::product::Product;
-
     #[test]
     fn intersect_with_ids_returns_correctly() {
-        let product1 = Product::new("Product1".to_string(), 0, 0);
-        let product2 = Product::new("Product2".to_string(), 0, 0);
-        let product3 = Product::new("Product2".to_string(), 0, 0);
+        let product1 = crate::model::product::Product::new("Product1".to_string(), 0, 0);
+        let product2 = crate::model::product::Product::new("Product2".to_string(), 0, 0);
+        let product3 = crate::model::product::Product::new("Product2".to_string(), 0, 0);
         let products = vec![product1.clone(), product2.clone(), product3.clone()];
 
         let ids = vec![String::from(&product2.id), String::from(&product1.id)];
-        let intersection =
-            products.intersect_with_ids(|x| String::from(&x.id), &ids, |left, right| left == right);
+        let intersection = crate::utils::vector_utils::VectorUtils::intersect_with_ids(
+            &products,
+            |x| String::from(&x.id),
+            &ids,
+            |left, right| left == right,
+        );
         assert_eq!(2, intersection.len());
     }
 }

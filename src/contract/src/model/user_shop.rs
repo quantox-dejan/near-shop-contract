@@ -1,3 +1,5 @@
+use crate::utils::random_utils;
+
 use super::coupon::Coupon;
 use super::product::Product;
 use super::storage_keys::StorageKeys;
@@ -16,7 +18,7 @@ pub struct UserShop {
 
 impl UserShop {
     pub fn new(name: String) -> Self {
-        let id = nanoid::nanoid!();
+        let id = random_utils::get_random();
         Self {
             id: String::from(&id),
             name,

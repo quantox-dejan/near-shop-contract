@@ -1,6 +1,7 @@
-use nanoid::nanoid;
 use near_sdk::borsh::{self, BorshDeserialize, BorshSerialize};
 use near_sdk::{AccountId, PanicOnDefault};
+
+use crate::utils::random_utils;
 
 #[derive(BorshDeserialize, BorshSerialize, PanicOnDefault, Debug, Clone)]
 pub struct Coupon {
@@ -18,7 +19,7 @@ pub struct Coupon {
 impl Coupon {
     pub fn new(code: String, discount_percentage: f32) -> Self {
         Self {
-            id: nanoid!(),
+            id: random_utils::get_random(),
             code,
             discount_percentage,
             applies_to_all_products: true,
@@ -38,7 +39,7 @@ impl Coupon {
         is_one_time: bool,
     ) -> Self {
         Self {
-            id: nanoid!(),
+            id: random_utils::get_random(),
             code,
             discount_percentage,
             applies_to_all_products: applies_to_products.is_empty(),

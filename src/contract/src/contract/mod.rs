@@ -11,6 +11,7 @@ use crate::model::user_shop::UserShop;
 use crate::utils::vector_utils::VectorUtils;
 use near_sdk::borsh::{self, BorshDeserialize, BorshSerialize};
 use near_sdk::collections::UnorderedMap;
+use near_sdk::json_types::U128;
 use near_sdk::{env, near_bindgen, AccountId, Balance, PanicOnDefault, Promise};
 
 #[near_bindgen]
@@ -26,9 +27,9 @@ pub struct NearShop {
 }
 
 #[near_bindgen]
-impl NearShopContract for NearShop {
+impl NearShop {
     #[init]
-    fn new() -> Self {
+    pub fn new() -> Self {
         if !env::state_read::<Self>().is_none() {
             env::panic_str("Already initialized");
         }
@@ -37,7 +38,10 @@ impl NearShopContract for NearShop {
             user_shops: UnorderedMap::new(StorageKeys::UserShops),
         }
     }
+}
 
+#[near_bindgen]
+impl NearShopContract for NearShop {
     fn get_my_user_shop(&self) -> Option<UserShopDto> {
         let user_shop = self.user_shops.get(&env::predecessor_account_id());
         match user_shop {
@@ -141,7 +145,7 @@ impl NearShopContract for NearShop {
         product_id: String,
         quantity: i32,
         coupon_code: String,
-    ) -> u128 {
+    ) -> U128 {
         let user_shops = self.user_shops.values_as_vector().to_vec();
         let found_user_shop = user_shops.iter().find(|x| x.id == user_shop_id);
         if let None = found_user_shop {
@@ -165,7 +169,7 @@ impl NearShopContract for NearShop {
             &user_shop_id,
         );
 
-        expected_amount
+        U128(expected_amount)
     }
 
     fn add_user_shop(&mut self, name: String) {
@@ -178,13 +182,13 @@ impl NearShopContract for NearShop {
             .insert(&env::predecessor_account_id(), &UserShop::new(name));
     }
 
-    fn add_product(&mut self, name: String, price: u128, quantity: i32) {
+    fn add_product(&mut self, name: String, price: U128, quantity: i32) {
         let mut user_shop = self
             .user_shops
             .get(&env::predecessor_account_id())
             .expect("You need to register your shop before adding products to sell");
         let products = &mut user_shop.products;
-        let new_product = Product::new(name, price, quantity);
+        let new_product = Product::new(name, price.into(), quantity);
         products.push(&new_product);
         self.user_shops
             .insert(&env::predecessor_account_id(), &user_shop);
@@ -432,7 +436,7 @@ mod tests {
         testing_env!(context);
 
         let mut contract = NearShop::new();
-        contract.add_product("Should not add this product".to_string(), 0, 0);
+        contract.add_product("Should not add this product".to_string(), U128(0), 0);
     }
 
     #[test]
@@ -468,7 +472,7 @@ mod tests {
 
         let mut contract = NearShop::new();
         contract.add_user_shop("Test Shop".to_string());
-        contract.add_product("Test Product".to_string(), 1337, 0);
+        contract.add_product("Test Product".to_string(), U128(1337), 0);
         let user_shop = contract.get_my_user_shop().unwrap();
         let products = contract.list_user_shop_products(user_shop.id);
         assert_eq!(1, products.len());
@@ -490,7 +494,7 @@ mod tests {
 
         let mut contract = NearShop::new();
         contract.add_user_shop("Test Shop".to_string());
-        contract.add_product("Test Product".to_string(), 1337, 0);
+        contract.add_product("Test Product".to_string(), U128(1337), 0);
         let user_shop = contract.get_my_user_shop().unwrap();
         let products = contract.list_user_shop_products(String::from(&user_shop.id));
         let test_product = products.get(0).unwrap();
@@ -571,7 +575,7 @@ mod tests {
         let mut contract = NearShop::new();
         contract.add_user_shop("Test Shop".to_string());
         contract.add_default_coupon("Test Coupon".to_string(), 50.00);
-        contract.add_product("Test Product".to_string(), 10_000_000_000, 0);
+        contract.add_product("Test Product".to_string(), U128(10_000_000_000), 0);
 
         let user_shop = contract.get_my_user_shop().unwrap();
         let products = contract.list_user_shop_products(String::from(&user_shop.id));
@@ -583,6 +587,6 @@ mod tests {
             1,
             "Test Coupon".to_string(),
         );
-        assert_eq!(5_000_000_000, cost);
+        assert_eq!(U128(5_000_000_000), cost);
     }
 }

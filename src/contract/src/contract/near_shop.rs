@@ -1,11 +1,9 @@
 use crate::dto::coupon::CouponDto;
 use crate::dto::product::ProductDto;
 use crate::dto::user_shop::UserShopDto;
-use near_sdk::{AccountId, Promise};
+use near_sdk::{json_types::U128, AccountId, Promise};
 
 pub trait NearShopContract {
-    fn new() -> Self;
-
     // Read methods
     fn get_my_user_shop(&self) -> Option<UserShopDto>;
     fn list_all_user_shops(&self) -> Vec<UserShopDto>;
@@ -19,11 +17,11 @@ pub trait NearShopContract {
         product_id: String,
         quantity: i32,
         coupon_code: String,
-    ) -> u128;
+    ) -> U128;
 
     // Write methods
     fn add_user_shop(&mut self, name: String);
-    fn add_product(&mut self, name: String, price: u128, quantity: i32);
+    fn add_product(&mut self, name: String, price: U128, quantity: i32);
     fn update_product_quantity(&mut self, product_id: String, quantity: i32);
     fn add_default_coupon(&mut self, code: String, discount_percentage: f32);
     fn add_specific_coupon(

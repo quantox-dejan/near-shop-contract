@@ -10,9 +10,8 @@ crate-type = ["cdylib", "rlib"]
 [dependencies]
 near-sdk = "4.0.0"
 uint = { version = "0.9.3", default-features = false }
-nanoid = "0.4.0"
-getrandom = { version = "0.2", features = ["js"] }
 serde = "1.0.143"
+fastrand = "1.1.0"
 
 [profile.release]
 codegen-units = 1
