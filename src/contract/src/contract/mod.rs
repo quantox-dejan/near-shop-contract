@@ -3,6 +3,7 @@ mod near_shop;
 use crate::contract::near_shop::NearShopContract;
 use crate::dto::coupon::CouponDto;
 use crate::dto::product::ProductDto;
+use crate::dto::return_value::ReturnValue;
 use crate::dto::user_shop::UserShopDto;
 use crate::model::coupon::Coupon;
 use crate::model::product::Product;
@@ -27,9 +28,9 @@ pub struct NearShop {
 }
 
 #[near_bindgen]
-impl NearShop {
+impl NearShopContract for NearShop {
     #[init]
-    pub fn new() -> Self {
+    fn initialize() -> Self {
         if !env::state_read::<Self>().is_none() {
             env::panic_str("Already initialized");
         }
@@ -38,10 +39,14 @@ impl NearShop {
             user_shops: UnorderedMap::new(StorageKeys::UserShops),
         }
     }
-}
 
-#[near_bindgen]
-impl NearShopContract for NearShop {
+    fn return_custom_object(&self) -> ReturnValue<String> {
+        ReturnValue {
+            result: String::from("Works!"),
+            success: true,
+        }
+    }
+
     fn get_my_user_shop(&self) -> Option<UserShopDto> {
         let user_shop = self.user_shops.get(&env::predecessor_account_id());
         match user_shop {
@@ -50,6 +55,29 @@ impl NearShopContract for NearShop {
                 name: result.name,
             }),
             None => None,
+        }
+    }
+
+    fn list_my_user_shop_products(&self) -> Vec<ProductDto> {
+        let user_shop_maybe = self.user_shops.get(&env::predecessor_account_id());
+
+        match user_shop_maybe {
+            Some(user_shop) => {
+                let mut return_value = Vec::new();
+                for product in user_shop.products.to_vec().iter() {
+                    return_value.push(ProductDto::new(
+                        String::from(&product.id),
+                        String::from(&product.name),
+                        product.price,
+                        product.quantity_on_stock,
+                    ));
+                }
+
+                return return_value;
+            }
+            None => {
+                env::panic_str("You don't have a user shop");
+            }
         }
     }
 
@@ -394,7 +422,7 @@ mod tests {
         let context = get_context(false);
         testing_env!(context);
 
-        let mut contract = NearShop::new();
+        let mut contract = NearShop::initialize();
         contract.add_user_shop("Test Shop".to_string());
         let user_shop = contract.get_my_user_shop();
         assert!(!user_shop.is_none());
@@ -407,7 +435,7 @@ mod tests {
         let context = get_context(false);
         testing_env!(context);
 
-        let mut contract = NearShop::new();
+        let mut contract = NearShop::initialize();
         let user_shop = contract.get_my_user_shop();
         assert!(user_shop.is_none());
         contract.add_user_shop("Test Shop".to_string());
@@ -419,7 +447,7 @@ mod tests {
         let context = get_context(false);
         testing_env!(context);
 
-        let mut contract = NearShop::new();
+        let mut contract = NearShop::initialize();
         contract.add_user_shop("Test Shop".to_string());
         let user_shop = contract.get_my_user_shop().unwrap();
         let user_shops = contract.user_shops.values_as_vector().to_vec();
@@ -435,7 +463,7 @@ mod tests {
         let context = get_context(false);
         testing_env!(context);
 
-        let mut contract = NearShop::new();
+        let mut contract = NearShop::initialize();
         contract.add_product("Should not add this product".to_string(), U128(0), 0);
     }
 
@@ -445,7 +473,7 @@ mod tests {
         let context = get_context(false);
         testing_env!(context);
 
-        let mut contract = NearShop::new();
+        let mut contract = NearShop::initialize();
         contract.add_default_coupon("Should not add this coupon".to_string(), 100.00);
     }
 
@@ -455,7 +483,7 @@ mod tests {
         let context = get_context(false);
         testing_env!(context);
 
-        let mut contract = NearShop::new();
+        let mut contract = NearShop::initialize();
         contract.add_specific_coupon(
             "Should not add this coupon".to_string(),
             100.00,
@@ -470,7 +498,7 @@ mod tests {
         let context = get_context(false);
         testing_env!(context);
 
-        let mut contract = NearShop::new();
+        let mut contract = NearShop::initialize();
         contract.add_user_shop("Test Shop".to_string());
         contract.add_product("Test Product".to_string(), U128(1337), 0);
         let user_shop = contract.get_my_user_shop().unwrap();
@@ -492,7 +520,7 @@ mod tests {
         let context = get_context(false);
         testing_env!(context);
 
-        let mut contract = NearShop::new();
+        let mut contract = NearShop::initialize();
         contract.add_user_shop("Test Shop".to_string());
         contract.add_product("Test Product".to_string(), U128(1337), 0);
         let user_shop = contract.get_my_user_shop().unwrap();
@@ -512,7 +540,7 @@ mod tests {
         let context = get_context(false);
         testing_env!(context);
 
-        let mut contract = NearShop::new();
+        let mut contract = NearShop::initialize();
         contract.add_user_shop("Test Shop".to_string());
         contract.add_default_coupon("Test Coupon".to_string(), 13.37);
         let coupons = contract.list_my_user_shop_coupons();
@@ -527,7 +555,7 @@ mod tests {
         let context = get_context(false);
         testing_env!(context);
 
-        let mut contract = NearShop::new();
+        let mut contract = NearShop::initialize();
         contract.add_user_shop("Test Shop".to_string());
         contract.add_specific_coupon("Test Coupon".to_string(), 13.37, &vec![], None, true);
         let coupons = contract.list_my_user_shop_coupons();
@@ -546,7 +574,7 @@ mod tests {
         let context = get_context(false);
         testing_env!(context);
 
-        let mut contract = NearShop::new();
+        let mut contract = NearShop::initialize();
         contract.add_user_shop("Test Shop".to_string());
         contract.add_specific_coupon(
             "Test Coupon".to_string(),
@@ -572,7 +600,7 @@ mod tests {
         let context = get_context(false);
         testing_env!(context);
 
-        let mut contract = NearShop::new();
+        let mut contract = NearShop::initialize();
         contract.add_user_shop("Test Shop".to_string());
         contract.add_default_coupon("Test Coupon".to_string(), 50.00);
         contract.add_product("Test Product".to_string(), U128(10_000_000_000), 0);

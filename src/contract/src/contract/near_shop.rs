@@ -1,11 +1,16 @@
-use crate::dto::coupon::CouponDto;
 use crate::dto::product::ProductDto;
 use crate::dto::user_shop::UserShopDto;
+use crate::dto::{coupon::CouponDto, return_value::ReturnValue};
 use near_sdk::{json_types::U128, AccountId, Promise};
 
 pub trait NearShopContract {
+    // Init
+    fn initialize() -> Self;
+
     // Read methods
+    fn return_custom_object(&self) -> ReturnValue<String>;
     fn get_my_user_shop(&self) -> Option<UserShopDto>;
+    fn list_my_user_shop_products(&self) -> Vec<ProductDto>;
     fn list_all_user_shops(&self) -> Vec<UserShopDto>;
     fn list_user_shop_products(&self, user_shop_id: String) -> Vec<ProductDto>;
     fn get_user_shop_product(&self, user_shop_id: String, product_id: String)

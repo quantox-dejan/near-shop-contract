@@ -18,7 +18,7 @@ pub fn get_random() -> String {
     return_value
 }
 
-#[cfg(target_family = "windows")]
+#[cfg(not(target_family = "wasm"))]
 pub fn get_random() -> String {
     let letters_array = [
         "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R",

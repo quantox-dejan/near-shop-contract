@@ -1,4 +1,4 @@
 mod contract;
-mod dto;
+pub mod dto;
 mod model;
 mod utils;
