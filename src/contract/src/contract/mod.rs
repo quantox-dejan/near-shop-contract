@@ -47,8 +47,10 @@ impl NearShopContract for NearShop {
         }
     }
 
-    fn get_my_user_shop(&self) -> Option<UserShopDto> {
-        let user_shop = self.user_shops.get(&env::predecessor_account_id());
+    fn get_my_user_shop(&self, user_account_id: String) -> Option<UserShopDto> {
+        let user_shop = self
+            .user_shops
+            .get(&AccountId::new_unchecked(user_account_id));
         match user_shop {
             Some(result) => Some(UserShopDto {
                 id: result.id,
@@ -58,8 +60,10 @@ impl NearShopContract for NearShop {
         }
     }
 
-    fn list_my_user_shop_products(&self) -> Vec<ProductDto> {
-        let user_shop_maybe = self.user_shops.get(&env::predecessor_account_id());
+    fn list_my_user_shop_products(&self, user_account_id: String) -> Vec<ProductDto> {
+        let user_shop_maybe = self
+            .user_shops
+            .get(&AccountId::new_unchecked(user_account_id));
 
         match user_shop_maybe {
             Some(user_shop) => {
@@ -140,8 +144,10 @@ impl NearShopContract for NearShop {
         ))
     }
 
-    fn list_my_user_shop_coupons(&self) -> Vec<CouponDto> {
-        let user_shop_maybe = self.user_shops.get(&env::predecessor_account_id());
+    fn list_my_user_shop_coupons(&self, user_account_id: String) -> Vec<CouponDto> {
+        let user_shop_maybe = self
+            .user_shops
+            .get(&AccountId::new_unchecked(user_account_id));
         if let None = user_shop_maybe {
             env::panic_str("You don't have a shop");
         }
@@ -410,21 +416,25 @@ mod tests {
     use near_sdk::test_utils::VMContextBuilder;
     use near_sdk::{testing_env, VMContext};
 
-    fn get_context(is_view: bool) -> VMContext {
-        VMContextBuilder::new()
-            .signer_account_id("bob.near".parse().unwrap())
-            .is_view(is_view)
-            .build()
+    fn get_context(is_view: bool) -> (VMContext, String) {
+        let signer_account_id = "bob.near";
+        (
+            VMContextBuilder::new()
+                .signer_account_id(signer_account_id.parse().unwrap())
+                .is_view(is_view)
+                .build(),
+            signer_account_id.to_string(),
+        )
     }
 
     #[test]
     fn get_my_user_shop_returns_after_adding_a_shop() {
         let context = get_context(false);
-        testing_env!(context);
+        testing_env!(context.0);
 
         let mut contract = NearShop::initialize();
         contract.add_user_shop("Test Shop".to_string());
-        let user_shop = contract.get_my_user_shop();
+        let user_shop = contract.get_my_user_shop(String::from(context.1));
         assert!(!user_shop.is_none());
         assert_eq!("Test Shop".to_string(), user_shop.unwrap().name);
     }
@@ -433,10 +443,10 @@ mod tests {
     #[should_panic(expected = "You already have a shop")]
     fn add_user_shop_adds_only_one_per_user() {
         let context = get_context(false);
-        testing_env!(context);
+        testing_env!(context.0);
 
         let mut contract = NearShop::initialize();
-        let user_shop = contract.get_my_user_shop();
+        let user_shop = contract.get_my_user_shop(String::from(context.1));
         assert!(user_shop.is_none());
         contract.add_user_shop("Test Shop".to_string());
         contract.add_user_shop("Should never add this one".to_string());
@@ -445,11 +455,11 @@ mod tests {
     #[test]
     fn user_shop_can_be_found_by_id() {
         let context = get_context(false);
-        testing_env!(context);
+        testing_env!(context.0);
 
         let mut contract = NearShop::initialize();
         contract.add_user_shop("Test Shop".to_string());
-        let user_shop = contract.get_my_user_shop().unwrap();
+        let user_shop = contract.get_my_user_shop(String::from(context.1)).unwrap();
         let user_shops = contract.user_shops.values_as_vector().to_vec();
         let _found_user_shop = user_shops
             .iter()
@@ -461,7 +471,7 @@ mod tests {
     #[should_panic(expected = "You need to register your shop before adding products to sell")]
     fn should_not_add_a_product_if_no_shop() {
         let context = get_context(false);
-        testing_env!(context);
+        testing_env!(context.0);
 
         let mut contract = NearShop::initialize();
         contract.add_product("Should not add this product".to_string(), U128(0), 0);
@@ -471,7 +481,7 @@ mod tests {
     #[should_panic(expected = "You need to register your shop before adding coupons")]
     fn should_not_add_a_default_coupon_if_no_shop() {
         let context = get_context(false);
-        testing_env!(context);
+        testing_env!(context.0);
 
         let mut contract = NearShop::initialize();
         contract.add_default_coupon("Should not add this coupon".to_string(), 100.00);
@@ -481,7 +491,7 @@ mod tests {
     #[should_panic(expected = "You need to register your shop before adding coupons")]
     fn should_not_add_a_specific_coupon_if_no_shop() {
         let context = get_context(false);
-        testing_env!(context);
+        testing_env!(context.0);
 
         let mut contract = NearShop::initialize();
         contract.add_specific_coupon(
@@ -496,38 +506,38 @@ mod tests {
     #[test]
     fn should_add_a_product_to_registered_shop() {
         let context = get_context(false);
-        testing_env!(context);
+        testing_env!(context.0);
 
         let mut contract = NearShop::initialize();
         contract.add_user_shop("Test Shop".to_string());
         contract.add_product("Test Product".to_string(), U128(1337), 0);
-        let user_shop = contract.get_my_user_shop().unwrap();
+        let user_shop = contract.get_my_user_shop(String::from(context.1)).unwrap();
         let products = contract.list_user_shop_products(user_shop.id);
         assert_eq!(1, products.len());
         let test_product = products.get(0).unwrap();
         assert_eq!("Test Product".to_string(), test_product.name);
-        assert_eq!(1337, test_product.price);
+        assert_eq!(U128(1337), test_product.price);
 
         // Bug?
         // The quantity above is set to 0 and here the received quantity_on_stock is -1.
         // If we set the quantity above to 1, then it will be -2.
         // If we set the quantity to an unsigned integer u16 and the value to 0, then it will be 65535.
-        assert_eq!(0, !test_product.quantity_on_stock);
+        assert_eq!(-1, !test_product.quantity_on_stock);
     }
 
     #[test]
     fn should_update_a_product_quantity() {
         let context = get_context(false);
-        testing_env!(context);
+        testing_env!(context.0);
 
         let mut contract = NearShop::initialize();
         contract.add_user_shop("Test Shop".to_string());
         contract.add_product("Test Product".to_string(), U128(1337), 0);
-        let user_shop = contract.get_my_user_shop().unwrap();
+        let user_shop = contract.get_my_user_shop(String::from(context.1)).unwrap();
         let products = contract.list_user_shop_products(String::from(&user_shop.id));
         let test_product = products.get(0).unwrap();
         assert_eq!("Test Product".to_string(), test_product.name);
-        assert_eq!(1337, test_product.price);
+        assert_eq!(U128(1337), test_product.price);
         contract.update_product_quantity(String::from(&test_product.id), 1000);
         let updated_product = contract
             .get_user_shop_product(String::from(&user_shop.id), String::from(&test_product.id))
@@ -538,12 +548,12 @@ mod tests {
     #[test]
     fn should_add_a_default_coupon_to_registered_shop() {
         let context = get_context(false);
-        testing_env!(context);
+        testing_env!(context.0);
 
         let mut contract = NearShop::initialize();
         contract.add_user_shop("Test Shop".to_string());
         contract.add_default_coupon("Test Coupon".to_string(), 13.37);
-        let coupons = contract.list_my_user_shop_coupons();
+        let coupons = contract.list_my_user_shop_coupons(String::from(context.1));
         assert_eq!(1, coupons.len());
         let test_coupon = coupons.get(0).unwrap();
         assert_eq!("Test Coupon".to_string(), test_coupon.code);
@@ -553,12 +563,12 @@ mod tests {
     #[test]
     fn should_add_a_one_time_specific_coupon_to_registered_shop() {
         let context = get_context(false);
-        testing_env!(context);
+        testing_env!(context.0);
 
         let mut contract = NearShop::initialize();
         contract.add_user_shop("Test Shop".to_string());
         contract.add_specific_coupon("Test Coupon".to_string(), 13.37, &vec![], None, true);
-        let coupons = contract.list_my_user_shop_coupons();
+        let coupons = contract.list_my_user_shop_coupons(String::from(context.1));
 
         assert_eq!(1, coupons.len());
         let test_coupon = coupons.get(0).unwrap();
@@ -572,7 +582,7 @@ mod tests {
     #[test]
     fn should_add_a_reusable_coupon_which_applies_to_one_user() {
         let context = get_context(false);
-        testing_env!(context);
+        testing_env!(context.0);
 
         let mut contract = NearShop::initialize();
         contract.add_user_shop("Test Shop".to_string());
@@ -584,7 +594,7 @@ mod tests {
             false,
         );
 
-        let coupons = contract.list_my_user_shop_coupons();
+        let coupons = contract.list_my_user_shop_coupons(String::from(context.1));
         assert_eq!(1, coupons.len());
         let test_coupon = coupons.get(0).unwrap();
         assert_eq!("Test Coupon".to_string(), test_coupon.code);
@@ -598,14 +608,14 @@ mod tests {
     #[test]
     fn should_return_correct_cost_with_coupon() {
         let context = get_context(false);
-        testing_env!(context);
+        testing_env!(context.0);
 
         let mut contract = NearShop::initialize();
         contract.add_user_shop("Test Shop".to_string());
         contract.add_default_coupon("Test Coupon".to_string(), 50.00);
         contract.add_product("Test Product".to_string(), U128(10_000_000_000), 0);
 
-        let user_shop = contract.get_my_user_shop().unwrap();
+        let user_shop = contract.get_my_user_shop(String::from(context.1)).unwrap();
         let products = contract.list_user_shop_products(String::from(&user_shop.id));
         let product = products.get(0).unwrap();
 

@@ -9,13 +9,13 @@ pub trait NearShopContract {
 
     // Read methods
     fn return_custom_object(&self) -> ReturnValue<String>;
-    fn get_my_user_shop(&self) -> Option<UserShopDto>;
-    fn list_my_user_shop_products(&self) -> Vec<ProductDto>;
+    fn get_my_user_shop(&self, user_account_id: String) -> Option<UserShopDto>;
+    fn list_my_user_shop_products(&self, user_account_id: String) -> Vec<ProductDto>;
     fn list_all_user_shops(&self) -> Vec<UserShopDto>;
     fn list_user_shop_products(&self, user_shop_id: String) -> Vec<ProductDto>;
     fn get_user_shop_product(&self, user_shop_id: String, product_id: String)
         -> Option<ProductDto>;
-    fn list_my_user_shop_coupons(&self) -> Vec<CouponDto>;
+    fn list_my_user_shop_coupons(&self, user_account_id: String) -> Vec<CouponDto>;
     fn get_product_cost_using_coupon(
         &self,
         user_shop_id: String,

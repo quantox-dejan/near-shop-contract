@@ -1,10 +1,13 @@
-use near_sdk::serde::{Deserialize, Serialize};
+use near_sdk::{
+    json_types::U128,
+    serde::{Deserialize, Serialize},
+};
 
-#[derive(Default, Deserialize, Serialize, Debug)]
+#[derive(Deserialize, Serialize, Debug)]
 pub struct ProductDto {
     pub id: String,
     pub name: String,
-    pub price: u128,
+    pub price: U128,
     pub quantity_on_stock: i32,
 }
 
@@ -13,7 +16,7 @@ impl ProductDto {
         Self {
             id,
             name,
-            price,
+            price: U128(price),
             quantity_on_stock,
         }
     }

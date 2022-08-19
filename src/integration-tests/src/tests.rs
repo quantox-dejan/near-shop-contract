@@ -45,6 +45,7 @@ async fn test_created_shop_with_two_products(
     // Get the user shop
     let mut user_shop: Result<UserShopDto, Error> = user
         .call(&worker, contract.id(), "get_my_user_shop")
+        .args_json(json!({ "user_account_id": user.id()}))?
         .transact()
         .await?
         .json();
@@ -58,6 +59,7 @@ async fn test_created_shop_with_two_products(
 
         user_shop = user
             .call(&worker, contract.id(), "get_my_user_shop")
+            .args_json(json!({ "user_account_id": user.id()}))?
             .transact()
             .await?
             .json::<UserShopDto>();
@@ -94,8 +96,8 @@ async fn test_created_shop_with_two_products(
     assert_eq!("Product 1".to_string(), product1.name);
     assert_eq!("Product 2".to_string(), product2.name);
 
-    assert_eq!(U128(100000), U128(product1.price));
-    assert_eq!(U128(200000), U128(product2.price));
+    assert_eq!(U128(100000), product1.price);
+    assert_eq!(U128(200000), product2.price);
 
     assert_eq!(10, product1.quantity_on_stock);
     assert_eq!(5, product2.quantity_on_stock);
