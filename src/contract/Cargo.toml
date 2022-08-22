@@ -12,6 +12,9 @@ near-sdk = "4.0.0"
 uint = { version = "0.9.3", default-features = false }
 serde = "1.0.143"
 fastrand = "1.1.0"
+diesel = { version = "1.4.8", features = ["postgres"] }
+dotenv = "0.15.0"
+chrono = "0.4"
 
 [profile.release]
 codegen-units = 1
