@@ -98,6 +98,19 @@ impl NearShopContract for NearShop {
         return_value
     }
 
+    fn get_user_shop(&self, user_shop_id: String) -> Option<UserShopDto> {
+        let user_shops = self.user_shops.values_as_vector().to_vec();
+        let found_user_shop = user_shops.iter().find(|&x| x.id == user_shop_id);
+        if let Some(user_shop) = found_user_shop {
+            return Some(UserShopDto::new(
+                String::from(&user_shop.id),
+                String::from(&user_shop.name),
+            ));
+        }
+
+        None
+    }
+
     fn list_user_shop_products(&self, user_shop_id: String) -> Vec<ProductDto> {
         let user_shops = self.user_shops.values_as_vector().to_vec();
         let found_user_shop = user_shops.iter().find(|&x| x.id == user_shop_id);

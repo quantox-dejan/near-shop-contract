@@ -12,6 +12,7 @@ pub trait NearShopContract {
     fn get_my_user_shop(&self, user_account_id: String) -> Option<UserShopDto>;
     fn list_my_user_shop_products(&self, user_account_id: String) -> Vec<ProductDto>;
     fn list_all_user_shops(&self) -> Vec<UserShopDto>;
+    fn get_user_shop(&self, user_shop_id: String) -> Option<UserShopDto>;
     fn list_user_shop_products(&self, user_shop_id: String) -> Vec<ProductDto>;
     fn get_user_shop_product(&self, user_shop_id: String, product_id: String)
         -> Option<ProductDto>;
